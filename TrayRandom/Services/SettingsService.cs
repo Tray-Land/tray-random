@@ -55,6 +55,13 @@ internal static class SettingsService
         set => Set(nameof(DiceVisual), value);
     }
 
+    /// <summary>Briefly scramble new text as it settles in (about 400 ms).</summary>
+    public static bool TextAnimation
+    {
+        get => Get(nameof(TextAnimation), true);
+        set => Set(nameof(TextAnimation), value);
+    }
+
     /// <summary>Keep the flyout open when focus leaves it; only the tray icon or Alt+F4 hides it.</summary>
     public static bool Pinned
     {

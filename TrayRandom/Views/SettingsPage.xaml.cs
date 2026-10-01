@@ -33,6 +33,7 @@ public sealed partial class SettingsPage : Page
         string locale = SettingsService.Locale;
         LocaleBox.SelectedItem = LocaleBox.Items.OfType<ComboBoxItem>().FirstOrDefault(i => (string)i.Tag == locale);
         AutoCopyToggle.IsOn = SettingsService.AutoCopy;
+        TextAnimationToggle.IsOn = SettingsService.TextAnimation;
         UpdateFavoritesDescription();
         _loading = false;
 
@@ -105,6 +106,14 @@ public sealed partial class SettingsPage : Page
         if (!_loading)
         {
             SettingsService.AutoCopy = AutoCopyToggle.IsOn;
+        }
+    }
+
+    private void TextAnimationToggle_Toggled(object sender, RoutedEventArgs e)
+    {
+        if (!_loading)
+        {
+            SettingsService.TextAnimation = TextAnimationToggle.IsOn;
         }
     }
 

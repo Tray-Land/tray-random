@@ -12,6 +12,7 @@ using TrayRandom.Categories;
 using TrayRandom.Dice;
 using TrayRandom.Favorites;
 using TrayRandom.Services;
+using TrayRandom.Text;
 using Windows.System;
 using Windows.UI.ViewManagement;
 using DispatcherQueueTimer = Microsoft.UI.Dispatching.DispatcherQueueTimer;
@@ -31,9 +32,16 @@ public sealed partial class FlyoutPage : Page, IDisposable
     private const int MediumResultLength = 28;
 
     private static readonly TimeSpan StatusDuration = TimeSpan.FromSeconds(2.5);
+    private static readonly TimeSpan ScrambleDuration = TimeSpan.FromMilliseconds(400);
+    private static readonly TimeSpan ScrambleFrame = TimeSpan.FromMilliseconds(40);
 
     private readonly ObservableCollection<FavoriteChip> _favorites = [];
     private readonly DispatcherQueueTimer _statusTimer;
+    private readonly DispatcherQueueTimer _scrambleTimer;
+    private readonly Random _scrambleRandom = new();
+    private string _scrambleResult = string.Empty;
+    private string _scrambleDetail = string.Empty;
+    private DateTime _scrambleStart;
     private readonly UISettings _uiSettings = new();
     private readonly AccessibilitySettings _accessibility = new();
     private RandomContentGenerator _generator;
@@ -51,6 +59,11 @@ public sealed partial class FlyoutPage : Page, IDisposable
         _statusTimer.Interval = StatusDuration;
         _statusTimer.IsRepeating = false;
         _statusTimer.Tick += (_, _) => StatusText.Text = string.Empty;
+
+        _scrambleTimer = DispatcherQueue.CreateTimer();
+        _scrambleTimer.Interval = ScrambleFrame;
+        _scrambleTimer.IsRepeating = true;
+        _scrambleTimer.Tick += (_, _) => ScrambleTick();
 
         _generator = new RandomContentGenerator(SettingsService.Locale);
         FavoritesView.ItemsSource = _favorites;
@@ -95,12 +108,14 @@ public sealed partial class FlyoutPage : Page, IDisposable
     public void OnHidden()
     {
         SaveInputs();
+        StopScramble();
         DiceTray.Stop();
     }
 
     public void Dispose()
     {
         _statusTimer.Stop();
+        StopScramble();
         DiceTray.Stop();
 
         // A static event would keep the closed window's whole XAML tree alive.
@@ -240,6 +255,55 @@ public sealed partial class FlyoutPage : Page, IDisposable
         ResultText.TextAlignment = multiline || value.Length > MediumResultLength ? TextAlignment.Left : TextAlignment.Center;
         ResultText.HorizontalAlignment = ResultText.TextAlignment == TextAlignment.Left ? HorizontalAlignment.Stretch : HorizontalAlignment.Center;
         ShowDiceTray(result, animate);
+        if (animate && DiceTray.Visibility != Visibility.Visible)
+        {
+            StartScramble(value, DetailText.Text);
+        }
+        else
+        {
+            StopScramble();
+        }
+    }
+
+    // 400 ms of random letters that resolve left to right; the real text lands at the end.
+    private void StartScramble(string result, string detail)
+    {
+        StopScramble();
+        if (!SettingsService.TextAnimation || !_uiSettings.AnimationsEnabled || (result.Length == 0 && detail.Length == 0))
+        {
+            return;
+        }
+
+        _scrambleResult = result;
+        _scrambleDetail = detail;
+        _scrambleStart = DateTime.UtcNow;
+        ScrambleTick();
+        _scrambleTimer.Start();
+    }
+
+    private void ScrambleTick()
+    {
+        double progress = (DateTime.UtcNow - _scrambleStart) / ScrambleDuration;
+        if (progress >= 1)
+        {
+            StopScramble();
+            return;
+        }
+
+        ResultText.Text = TextScramble.Frame(_scrambleResult, progress, _scrambleRandom);
+        DetailText.Text = TextScramble.Frame(_scrambleDetail, progress, _scrambleRandom);
+    }
+
+    private void StopScramble()
+    {
+        if (!_scrambleTimer.IsRunning)
+        {
+            return;
+        }
+
+        _scrambleTimer.Stop();
+        ResultText.Text = _scrambleResult;
+        DetailText.Text = _scrambleDetail;
     }
 
     // Animated dice: the tray takes the card's top and the total sits under it, hidden until
