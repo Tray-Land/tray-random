@@ -41,6 +41,7 @@ public sealed partial class FlyoutPage : Page, IDisposable
     private readonly Random _scrambleRandom = new();
     private string _scrambleResult = string.Empty;
     private string _scrambleDetail = string.Empty;
+    private ResultRow[] _scrambleRows = [];
     private DateTime _scrambleStart;
     private readonly UISettings _uiSettings = new();
     private readonly AccessibilitySettings _accessibility = new();
@@ -235,7 +236,9 @@ public sealed partial class FlyoutPage : Page, IDisposable
         if (!single)
         {
             ShowDiceTray(null, animate: false);
-            ResultsList.ItemsSource = _results.Select((item, i) => new ResultRow(item, i + 1)).ToArray();
+            ResultRow[] rows = _results.Select((item, i) => new ResultRow(item, i + 1)).ToArray();
+            ResultsList.ItemsSource = rows;
+            StartScramble(string.Empty, string.Empty, animate ? rows : []);
             return;
         }
 
@@ -257,7 +260,7 @@ public sealed partial class FlyoutPage : Page, IDisposable
         ShowDiceTray(result, animate);
         if (animate && DiceTray.Visibility != Visibility.Visible)
         {
-            StartScramble(value, DetailText.Text);
+            StartScramble(value, DetailText.Text, []);
         }
         else
         {
@@ -266,16 +269,17 @@ public sealed partial class FlyoutPage : Page, IDisposable
     }
 
     // 400 ms of random letters that resolve left to right; the real text lands at the end.
-    private void StartScramble(string result, string detail)
+    private void StartScramble(string result, string detail, ResultRow[] rows)
     {
         StopScramble();
-        if (!SettingsService.TextAnimation || !_uiSettings.AnimationsEnabled || (result.Length == 0 && detail.Length == 0))
+        if (!SettingsService.TextAnimation || !_uiSettings.AnimationsEnabled || (result.Length == 0 && detail.Length == 0 && rows.Length == 0))
         {
             return;
         }
 
         _scrambleResult = result;
         _scrambleDetail = detail;
+        _scrambleRows = rows;
         _scrambleStart = DateTime.UtcNow;
         ScrambleTick();
         _scrambleTimer.Start();
@@ -292,6 +296,10 @@ public sealed partial class FlyoutPage : Page, IDisposable
 
         ResultText.Text = TextScramble.Frame(_scrambleResult, progress, _scrambleRandom);
         DetailText.Text = TextScramble.Frame(_scrambleDetail, progress, _scrambleRandom);
+        foreach (ResultRow row in _scrambleRows)
+        {
+            row.Scramble(progress, _scrambleRandom);
+        }
     }
 
     private void StopScramble()
@@ -304,6 +312,12 @@ public sealed partial class FlyoutPage : Page, IDisposable
         _scrambleTimer.Stop();
         ResultText.Text = _scrambleResult;
         DetailText.Text = _scrambleDetail;
+        foreach (ResultRow row in _scrambleRows)
+        {
+            row.Settle();
+        }
+
+        _scrambleRows = [];
     }
 
     // Animated dice: the tray takes the card's top and the total sits under it, hidden until
@@ -600,7 +614,7 @@ public sealed partial class FlyoutPage : Page, IDisposable
     {
         if (e.ClickedItem is ResultRow row)
         {
-            CopyText(row.Value, $"Copied #{row.Number}");
+            CopyText(row.FinalValue, $"Copied #{row.Number}");
         }
     }
 

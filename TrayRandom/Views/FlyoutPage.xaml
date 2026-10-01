@@ -385,7 +385,7 @@
                         <DataTemplate x:DataType="local:ResultRow">
                             <Grid
                                 Padding="0,6"
-                                AutomationProperties.Name="{x:Bind Value}"
+                                AutomationProperties.Name="{x:Bind FinalValue}"
                                 ColumnSpacing="8"
                                 ToolTipService.ToolTip="Click to copy">
                                 <Grid.ColumnDefinitions>
@@ -399,11 +399,11 @@
                                     Text="{x:Bind Number}"
                                     TextAlignment="Right" />
                                 <StackPanel Grid.Column="1">
-                                    <TextBlock Text="{x:Bind Value}" TextWrapping="Wrap" />
+                                    <TextBlock Text="{x:Bind Value, Mode=OneWay}" TextWrapping="Wrap" />
                                     <TextBlock
                                         Foreground="{ThemeResource TextFillColorSecondaryBrush}"
                                         Style="{StaticResource CaptionTextBlockStyle}"
-                                        Text="{x:Bind Detail}"
+                                        Text="{x:Bind Detail, Mode=OneWay}"
                                         TextWrapping="Wrap"
                                         Visibility="{x:Bind DetailVisibility}" />
                                 </StackPanel>
