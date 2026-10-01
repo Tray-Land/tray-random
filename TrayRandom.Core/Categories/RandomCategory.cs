@@ -1,4 +1,5 @@
 using Bogus;
+using TrayRandom.Dice;
 
 namespace TrayRandom.Categories;
 
@@ -43,6 +44,9 @@ public sealed record CategoryGroup(string Name, string Glyph);
 /// working shown beneath it (the individual dice of a roll).</summary>
 public sealed record GeneratedItem(string Value, string? Detail = null)
 {
+    /// <summary>The roll behind a dice result, so the flyout can draw the dice.</summary>
+    public DiceRoll? Roll { get; init; }
+
     public static implicit operator GeneratedItem(string value) => new(value);
 }
 

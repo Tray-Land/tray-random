@@ -146,7 +146,10 @@ public static class CategoryCatalog
         bool single = expression.Terms is [{ IsDice: true, Count: 1 }];
         return new GeneratedItem(
             roll.Total.ToString(CultureInfo.CurrentCulture),
-            single ? expression.Normalized : $"{expression.Normalized}: {roll.Breakdown}");
+            single ? expression.Normalized : $"{expression.Normalized}: {roll.Breakdown}")
+        {
+            Roll = roll,
+        };
     }
 
     private static GeneratedItem NumberInRange(GenerationContext c)
