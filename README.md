@@ -20,6 +20,7 @@ Tray Random is a small tray-only app. Click its dice icon to open a flyout, pick
   - **Tech & IDs:** GUID, hex string, random string, SHA-1 hash, version number, file name, file path, MIME type, database column
   - **Fun & misc:** color name, vehicle, VIN, music genre
 - **Dice notation:** `d20`, `2d6+3`, `4d6kh3` (keep the highest 3), `2d20kl1` (disadvantage), `d%`, and mixed terms like `2d6-d4+1`. Quick buttons for d4 to d100 keep your dice count (3d6 becomes 3d20). Results show the working, with dropped dice in parentheses: `4d6kh3: [6, 5, 3, (1)]`.
+- **Animated dice:** the eye button next to "how many" turns on a dice tray. The tray shows one roll, so turning it on sets the count to 1 and raising the count turns it off. Each roll throws real-looking dice (a triangle d4, pipped d6, kite d10, a d20 with its facets, and so on) that tumble, bounce and settle before the total springs in. Dropped dice dim, subtracted dice are orange, and a top roll flashes gold. Click the tray to roll again. It respects Windows "Animation effects" (off means the dice just appear) and steps aside in High Contrast. It draws up to 24 dice and counts the rest.
 - **Several at once:** set "how many" (1 to 50) to get a numbered list. Click any line to copy just that one, or use Copy to take them all. Picking from a list draws without repeats until the list runs out, like names from a hat.
 - **Favorites:** star any category to pin it in the strip at the top. Drag chips to reorder them, or right-click a chip to move it left or right, or unpin it. Five are pinned to start (dice, full name, email, sentence, GUID).
 - **Tray menu:** right-click the icon for "Copy full name", "Copy email" and so on for your first six favorites. Each one generates a fresh value and copies it without opening the flyout, and the tooltip shows what was copied.
@@ -64,7 +65,7 @@ cd TrayRandom
 winapp run             # build, register, and launch with package identity
 winapp run --clean     # start fresh to see first run again
 cd ..
-dotnet test TrayRandom.Tests   # dice notation, favorites, and every category in every locale
+dotnet test TrayRandom.Tests   # dice notation, dice tray layout, favorites, and every category in every locale
 ```
 
 The solution has three projects:
@@ -72,7 +73,7 @@ The solution has three projects:
 | Project | What's in it |
 |---|---|
 | `TrayRandom` | The WinUI 3 tray app: tray icon, flyout, settings page |
-| `TrayRandom.Core` | No Windows dependencies: the category catalog (Bogus), dice notation parser and roller, favorites logic, locales |
+| `TrayRandom.Core` | No Windows dependencies: the category catalog (Bogus), dice notation parser and roller, dice tray layout and throw paths, favorites logic, locales |
 | `TrayRandom.Tests` | MSTest tests for Core |
 
 To make a release, bump the version in `TrayRandom/Package.appxmanifest` and run `build-msix-for-gh.ps1`. It builds signed x64 and ARM64 MSIX packages and drafts a GitHub release.
