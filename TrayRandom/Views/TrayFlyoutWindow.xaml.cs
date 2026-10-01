@@ -24,8 +24,8 @@ namespace TrayRandom.Views;
 /// </summary>
 public sealed partial class TrayFlyoutWindow : WindowEx
 {
-    private const int PopupWidth = 360;
-    private const int PopupHeight = 480;
+    private const int PopupWidth = 400;
+    private const int PopupHeight = 600;
 
     private const int WS_EX_TOOLWINDOW = 0x00000080;
     private const int WS_EX_LAYERED = 0x00080000;
@@ -54,6 +54,7 @@ public sealed partial class TrayFlyoutWindow : WindowEx
     private readonly DispatcherQueueTimer _animationTimer;
     private readonly Stopwatch _animationClock = new();
 
+    private SettingsPage? _settingsPage;
     private bool _isShowing;
     private bool _isPopupVisible;
     private bool _allowClose;
@@ -106,6 +107,10 @@ public sealed partial class TrayFlyoutWindow : WindowEx
         _animationTimer.Tick += AnimationTimer_Tick;
     }
 
+    public bool IsPopupVisible => _isPopupVisible;
+
+    public bool IsShowingSettings => PageHost.Content is SettingsPage;
+
     /// <summary>Shows the popup, or hides it if already visible (tray-icon click behavior).</summary>
     public void Toggle()
     {
@@ -120,7 +125,32 @@ public sealed partial class TrayFlyoutWindow : WindowEx
             return;
         }
 
+        // A tray click always lands on the content, even if settings were open last time.
+        ShowMainPage();
         ShowPopup();
+    }
+
+    public void ShowSettingsPage()
+    {
+        _settingsPage ??= new SettingsPage(ShowMainPage);
+        _settingsPage.OnShown();
+        _page.OnHidden();
+        PageHost.Content = _settingsPage;
+    }
+
+    public void ShowMainPage()
+    {
+        if (ReferenceEquals(PageHost.Content, _page))
+        {
+            return;
+        }
+
+        PageHost.Content = _page;
+        if (_isPopupVisible)
+        {
+            // Picks up settings changes such as a new locale or reset favorites.
+            _page.OnShown();
+        }
     }
 
     public void ShowPopup()
@@ -143,7 +173,10 @@ public sealed partial class TrayFlyoutWindow : WindowEx
         Activate();
         PInvoke.SetForegroundWindow(_hwnd);
 
-        _page.OnShown();
+        if (!IsShowingSettings)
+        {
+            _page.OnShown();
+        }
     }
 
     public void HidePopup()
@@ -182,6 +215,8 @@ public sealed partial class TrayFlyoutWindow : WindowEx
         _animationTimer.Stop();
         _page.OnHidden();
         _page.Dispose();
+        _settingsPage = null;
+        PageHost.Content = null;
 
         _uiSettings.ColorValuesChanged -= OnColorValuesChanged;
         Activated -= OnWindowActivated;
@@ -360,9 +395,32 @@ public sealed partial class TrayFlyoutWindow : WindowEx
         return className.SequenceEqual("Xaml_WindowedPopupClass") || className.SequenceEqual("#32768");
     }
 
+    // Escape backs out of settings first, then hides.
     private void Escape_Invoked(KeyboardAccelerator sender, KeyboardAcceleratorInvokedEventArgs args)
     {
         args.Handled = true;
-        HidePopup();
+        if (IsShowingSettings)
+        {
+            ShowMainPage();
+        }
+        else
+        {
+            HidePopup();
+        }
+    }
+
+    private void Back_Invoked(KeyboardAccelerator sender, KeyboardAcceleratorInvokedEventArgs args)
+    {
+        args.Handled = IsShowingSettings;
+        ShowMainPage();
+    }
+
+    private void PopupRoot_PointerPressed(object sender, PointerRoutedEventArgs e)
+    {
+        if (IsShowingSettings && e.GetCurrentPoint(PopupRoot).Properties.IsXButton1Pressed)
+        {
+            e.Handled = true;
+            ShowMainPage();
+        }
     }
 }

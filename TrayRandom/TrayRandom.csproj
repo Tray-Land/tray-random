@@ -28,10 +28,16 @@
     <Content Include="Assets\AppIcon.ico" />
     <Content Include="Assets\Wide310x150Logo.scale-200.png" />
     <Content Include="Assets\AppIcon-dark.ico" />
-    <Content Remove="branding\**" />
   </ItemGroup>
   <ItemGroup>
     <Manifest Include="$(ApplicationManifest)" />
+  </ItemGroup>
+  <ItemGroup>
+    <ProjectReference Include="..\TrayRandom.Core\TrayRandom.Core.csproj" />
+  </ItemGroup>
+  <ItemGroup>
+    <!-- Bogus loads its locale data from embedded resources and binds datasets by reflection; keep it whole when trimming. -->
+    <TrimmerRootAssembly Include="Bogus" />
   </ItemGroup>
   <!--
     Defining the "Msix" ProjectCapability here allows the Single-project MSIX Packaging

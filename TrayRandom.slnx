@@ -1,0 +1,13 @@
+<Solution>
+  <Configurations>
+    <Platform Name="ARM64" />
+    <Platform Name="x64" />
+  </Configurations>
+  <Project Path="TrayRandom/TrayRandom.csproj">
+    <Platform Solution="*|ARM64" Project="ARM64" />
+    <Platform Solution="*|x64" Project="x64" />
+    <Deploy />
+  </Project>
+  <Project Path="TrayRandom.Core/TrayRandom.Core.csproj" />
+  <Project Path="TrayRandom.Tests/TrayRandom.Tests.csproj" />
+</Solution>

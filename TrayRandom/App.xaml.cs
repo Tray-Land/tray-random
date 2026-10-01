@@ -1,6 +1,8 @@
+using System.Globalization;
 using Microsoft.UI.Dispatching;
 using Microsoft.UI.Xaml;
 using Microsoft.UI.Xaml.Controls;
+using TrayRandom.Categories;
 using TrayRandom.Services;
 using TrayRandom.Views;
 using WinUIEx;
@@ -18,6 +20,7 @@ public partial class App : Application
     private const string MutexName = "Local\\TrayRandom_SingleInstance";
     private const string ShowEventName = "Local\\TrayRandom_ShowFlyout";
     private const int MaxTooltipLength = 127; // NOTIFYICONDATA.szTip limit
+    private const int MaxQuickCopyItems = 6;
 
     // Startup leaves JIT and first-request state behind that the idle app never touches again.
     private static readonly TimeSpan StartupTrimDelay = TimeSpan.FromSeconds(30);
@@ -27,7 +30,6 @@ public partial class App : Application
     private RegisteredWaitHandle? _showWait;
     private TrayIcon? _trayIcon;
     private TrayFlyoutWindow? _flyout;
-    private SettingsWindow? _settings;
     private DispatcherQueue? _dispatcher;
     private bool _isExiting;
 
@@ -102,24 +104,38 @@ public partial class App : Application
     {
         TrayFlyoutWindow flyout = EnsureFlyout();
         flyout.HidePopup();
+        flyout.ShowMainPage();
         flyout.ShowPopup();
     }
 
+    /// <summary>Shows the flyout on its settings page.</summary>
     public void ShowSettings()
     {
-        _flyout?.HidePopup();
-        if (_settings is null)
+        TrayFlyoutWindow flyout = EnsureFlyout();
+        flyout.ShowSettingsPage();
+        if (!flyout.IsPopupVisible)
         {
-            _settings = new SettingsWindow();
-            _settings.Closed += (_, _) =>
-            {
-                _settings = null;
-                ReleaseIdleResourcesIfNoWindows();
-            };
+            flyout.ShowPopup();
+        }
+    }
+
+    /// <summary>Generates one result for a favorite and copies it, without opening the flyout.</summary>
+    private void QuickCopy(RandomCategory category)
+    {
+        string status;
+        try
+        {
+            GeneratedItem item = new RandomContentGenerator(SettingsService.Locale).Generate(category, SettingsService.Inputs)[0];
+            status = ClipboardService.TryCopy(item.Value) ? $"Copied {category.Name}: {item.Value.ReplaceLineEndings(" ")}" : "Couldn't copy; try again";
+        }
+        catch (Exception ex) when (ex is ArgumentException or FormatException)
+        {
+            // Bad saved input (an empty list to pick from): open the flyout where it can be fixed.
+            ShowFlyout();
+            return;
         }
 
-        _settings.Activate();
-        _settings.BringToFront();
+        SetTrayStatus(status);
     }
 
     private void InitializeTrayIcon()
@@ -141,12 +157,28 @@ public partial class App : Application
         MenuFlyout menu = new();
         MenuFlyoutItem open = new() { Text = $"Open {DisplayName}", Icon = new FontIcon { Glyph = "" } };
         open.Click += (_, _) => ShowFlyout();
+        menu.Items.Add(open);
+
+        // Quick copies from the favorites, so common values are a right-click away.
+        IReadOnlyList<string> favorites = SettingsService.Favorites;
+        if (favorites.Count > 0)
+        {
+            menu.Items.Add(new MenuFlyoutSeparator());
+            foreach (RandomCategory category in favorites.Take(MaxQuickCopyItems).Select(id => CategoryCatalog.Find(id)!))
+            {
+                MenuFlyoutItem item = new() { Text = $"Copy {category.Name.ToLower(CultureInfo.CurrentCulture)}", Icon = new FontIcon { Glyph = category.Glyph } };
+                item.Click += (_, _) => QuickCopy(category);
+                menu.Items.Add(item);
+            }
+
+            menu.Items.Add(new MenuFlyoutSeparator());
+        }
+
         MenuFlyoutItem settings = new() { Text = "Settings", Icon = new FontIcon { Glyph = "" } };
         settings.Click += (_, _) => ShowSettings();
         MenuFlyoutItem exit = new() { Text = "Exit", Icon = new FontIcon { Glyph = "" } };
         exit.Click += (_, _) => ExitApp();
 
-        menu.Items.Add(open);
         menu.Items.Add(settings);
         menu.Items.Add(new MenuFlyoutSeparator());
         menu.Items.Add(exit);
@@ -171,7 +203,7 @@ public partial class App : Application
 
     private void ReleaseIdleResourcesIfNoWindows()
     {
-        if (_flyout is null && _settings is null && !_isExiting)
+        if (_flyout is null && !_isExiting)
         {
             MemoryService.ReleaseIdle();
         }
@@ -181,7 +213,6 @@ public partial class App : Application
     {
         _isExiting = true;
         _flyout?.CloseWindow();
-        _settings?.Close();
 
         if (_trayIcon is not null)
         {
