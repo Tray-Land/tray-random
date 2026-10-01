@@ -1,0 +1,10 @@
+{
+  "profiles": {
+    "TrayRandom (Package)": {
+      "commandName": "MsixPackage"
+    },
+    "TrayRandom (Unpackaged)": {
+      "commandName": "Project"
+    }
+  }
+}
