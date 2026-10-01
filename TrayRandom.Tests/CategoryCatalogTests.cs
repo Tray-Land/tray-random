@@ -54,12 +54,12 @@ public sealed class CategoryCatalogTests
     }
 
     [TestMethod]
-    public void Count_IsClamped()
+    public void Count_HasNoUpperLimit()
     {
         RandomContentGenerator generator = new();
         RandomCategory guid = CategoryCatalog.Find("guid")!;
         Assert.AreEqual(1, generator.Generate(guid, Inputs, 0).Count);
-        Assert.AreEqual(RandomContentGenerator.MaxCount, generator.Generate(guid, Inputs, 999).Count);
+        Assert.AreEqual(999, generator.Generate(guid, Inputs, 999).Count);
     }
 
     [TestMethod]

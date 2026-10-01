@@ -30,6 +30,7 @@ public sealed partial class FlyoutPage : Page, IDisposable
     private const string StarFilledGlyph = "";
     private const int LargeResultLength = 8;
     private const int MediumResultLength = 28;
+    private const int MaxAnimatedRows = 200;
 
     private static readonly TimeSpan StatusDuration = TimeSpan.FromSeconds(2.5);
     private static readonly TimeSpan ScrambleDuration = TimeSpan.FromMilliseconds(400);
@@ -238,7 +239,7 @@ public sealed partial class FlyoutPage : Page, IDisposable
             ShowDiceTray(null, animate: false);
             ResultRow[] rows = _results.Select((item, i) => new ResultRow(item, i + 1)).ToArray();
             ResultsList.ItemsSource = rows;
-            StartScramble(string.Empty, string.Empty, animate ? rows : []);
+            StartScramble(string.Empty, string.Empty, animate && rows.Length <= MaxAnimatedRows ? rows : []);
             return;
         }
 
@@ -595,7 +596,7 @@ public sealed partial class FlyoutPage : Page, IDisposable
             return;
         }
 
-        SettingsService.Count = (int)args.NewValue;
+        SettingsService.Count = (int)Math.Min(args.NewValue, int.MaxValue);
 
         // Several results are a list, which the dice tray can't show: asking for more turns it off.
         if (SettingsService.Count > 1 && SettingsService.DiceVisual)

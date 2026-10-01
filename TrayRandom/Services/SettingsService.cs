@@ -87,7 +87,7 @@ internal static class SettingsService
     /// <summary>How many results to make at once.</summary>
     public static int Count
     {
-        get => Math.Clamp(Get(nameof(Count), 1), 1, RandomContentGenerator.MaxCount);
+        get => Math.Max(Get(nameof(Count), 1), 1);
         set => Set(nameof(Count), value);
     }
 

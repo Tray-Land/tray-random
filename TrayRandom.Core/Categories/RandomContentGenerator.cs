@@ -5,8 +5,6 @@ namespace TrayRandom.Categories;
 /// <summary>Makes batches of results for a category in one Bogus locale.</summary>
 public sealed class RandomContentGenerator
 {
-    public const int MaxCount = 50;
-
     private readonly Faker _faker;
     private Faker? _english;
 
@@ -19,13 +17,13 @@ public sealed class RandomContentGenerator
     public string Locale { get; }
 
     /// <summary>
-    /// Generates <paramref name="count"/> results (clamped to 1..<see cref="MaxCount"/>).
+    /// Generates <paramref name="count"/> results (at least 1; there is no upper limit).
     /// Throws <see cref="ArgumentException"/> or <see cref="FormatException"/> with a message fit
     /// to show the user when the category's input is unusable.
     /// </summary>
     public IReadOnlyList<GeneratedItem> Generate(RandomCategory category, CategoryInputs inputs, int count = 1)
     {
-        count = Math.Clamp(count, 1, MaxCount);
+        count = Math.Max(count, 1);
         GenerationContext context = new(_faker, inputs);
         if (category.GenerateBatch is { } batch)
         {

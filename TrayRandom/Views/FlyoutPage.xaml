@@ -426,10 +426,9 @@
             <StackPanel Orientation="Horizontal" Spacing="4">
                 <NumberBox
                     x:Name="CountBox"
-                    Width="104"
+                    Width="136"
                     AutomationProperties.Name="How many"
                     LargeChange="5"
-                    Maximum="50"
                     Minimum="1"
                     SmallChange="1"
                     SpinButtonPlacementMode="Inline"
