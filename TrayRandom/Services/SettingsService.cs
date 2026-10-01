@@ -48,6 +48,20 @@ internal static class SettingsService
         set => Set(nameof(AutoCopy), value);
     }
 
+    /// <summary>Roll animated dice in a tray instead of showing only the total.</summary>
+    public static bool DiceVisual
+    {
+        get => Get(nameof(DiceVisual), true);
+        set => Set(nameof(DiceVisual), value);
+    }
+
+    /// <summary>Keep the flyout open when focus leaves it; only the tray icon or Alt+F4 hides it.</summary>
+    public static bool Pinned
+    {
+        get => Get(nameof(Pinned), false);
+        set => Set(nameof(Pinned), value);
+    }
+
     /// <summary>Favorite category ids in the user's order. Unknown ids are dropped on read.</summary>
     public static IReadOnlyList<string> Favorites
     {

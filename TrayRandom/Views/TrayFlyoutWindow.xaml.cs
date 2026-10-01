@@ -365,7 +365,7 @@ public sealed partial class TrayFlyoutWindow : WindowEx
     private void HideIfFocusLeftWindow()
     {
         _hideTimer.Stop();
-        if (_isPopupVisible && !ShouldRemainVisible(PInvoke.GetForegroundWindow()))
+        if (_isPopupVisible && !SettingsService.Pinned && !ShouldRemainVisible(PInvoke.GetForegroundWindow()))
         {
             HidePopup();
         }
@@ -403,7 +403,7 @@ public sealed partial class TrayFlyoutWindow : WindowEx
         {
             ShowMainPage();
         }
-        else
+        else if (!SettingsService.Pinned)
         {
             HidePopup();
         }

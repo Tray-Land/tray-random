@@ -3,6 +3,7 @@
     x:Class="TrayRandom.Views.FlyoutPage"
     xmlns="http://schemas.microsoft.com/winfx/2006/xaml/presentation"
     xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
+    xmlns:controls="using:TrayRandom.Controls"
     xmlns:local="using:TrayRandom.Views"
     Background="Transparent"
     KeyboardAcceleratorPlacementMode="Hidden">
@@ -60,14 +61,25 @@
             <Grid.ColumnDefinitions>
                 <ColumnDefinition Width="*" />
                 <ColumnDefinition Width="Auto" />
+                <ColumnDefinition Width="Auto" />
             </Grid.ColumnDefinitions>
             <TextBlock
                 x:Name="TitleText"
                 VerticalAlignment="Center"
                 Style="{StaticResource SubtitleTextBlockStyle}"
                 Text="Tray Random" />
-            <Button
+            <ToggleButton
+                x:Name="PinButton"
                 Grid.Column="1"
+                AutomationProperties.Name="Keep open"
+                Checked="PinButton_Toggled"
+                Style="{StaticResource FlyoutIconToggleButtonStyle}"
+                ToolTipService.ToolTip="Keep open"
+                Unchecked="PinButton_Toggled">
+                <FontIcon x:Name="PinGlyph" FontSize="14" Glyph="&#xE718;" />
+            </ToggleButton>
+            <Button
+                Grid.Column="2"
                 AutomationProperties.Name="Settings"
                 Click="SettingsButton_Click"
                 Style="{StaticResource FlyoutIconButtonStyle}"
@@ -232,12 +244,51 @@
                     Content="d100"
                     Tag="100" />
             </Grid>
-            <TextBox
-                x:Name="DiceBox"
-                AutomationProperties.Name="Dice"
-                KeyDown="InputBox_KeyDown"
-                PlaceholderText="2d6+3, 4d6kh3, d%"
-                ToolTipService.ToolTip="Dice notation: NdS, + or - terms, kh/kl to keep the highest or lowest" />
+            <Grid ColumnSpacing="4">
+                <Grid.ColumnDefinitions>
+                    <ColumnDefinition Width="*" />
+                    <ColumnDefinition Width="Auto" />
+                </Grid.ColumnDefinitions>
+                <TextBox
+                    x:Name="DiceBox"
+                    AutomationProperties.Name="Dice"
+                    KeyDown="InputBox_KeyDown"
+                    PlaceholderText="2d6+3, 4d6kh3, d%" />
+                <Button
+                    Grid.Column="1"
+                    VerticalAlignment="Stretch"
+                    AutomationProperties.Name="Dice notation help"
+                    ToolTipService.ToolTip="How dice notation works">
+                    <FontIcon FontSize="14" Glyph="&#xE946;" />
+                    <Button.Flyout>
+                        <Flyout Placement="Top">
+                            <StackPanel MaxWidth="280" Spacing="6">
+                                <TextBlock Style="{StaticResource BodyStrongTextBlockStyle}" Text="Dice notation" />
+                                <TextBlock TextWrapping="Wrap">
+                                    <Run Text="NdS" FontFamily="Consolas" />
+                                    <Run Text="rolls N dice with S sides and adds them up: 3d6 is three six-sided dice. Leave N off for one die: d20." />
+                                </TextBlock>
+                                <TextBlock TextWrapping="Wrap">
+                                    <Run Text="d%" FontFamily="Consolas" />
+                                    <Run Text="is a percentile die, the same as d100." />
+                                </TextBlock>
+                                <TextBlock TextWrapping="Wrap">
+                                    <Run Text="+ and -" FontFamily="Consolas" />
+                                    <Run Text="join terms and constants: 2d6+3, d20-1, 1d8+1d4+2." />
+                                </TextBlock>
+                                <TextBlock TextWrapping="Wrap">
+                                    <Run Text="kh / kl" FontFamily="Consolas" />
+                                    <Run Text="keeps only the highest or lowest few dice: 4d6kh3 drops the lowest of four, 2d20kl1 is disadvantage. k3 means kh3." />
+                                </TextBlock>
+                                <TextBlock
+                                    Foreground="{ThemeResource TextFillColorSecondaryBrush}"
+                                    Text="Case and spaces don't matter. Up to 100 dice per term, 1000 sides, 20 terms."
+                                    TextWrapping="Wrap" />
+                            </StackPanel>
+                        </Flyout>
+                    </Button.Flyout>
+                </Button>
+            </Grid>
         </StackPanel>
 
         <Grid
@@ -284,8 +335,20 @@
             BorderThickness="1"
             CornerRadius="8">
             <Grid>
+                <!--  The dice tray takes the top row when animated dice are on  -->
+                <Grid.RowDefinitions>
+                    <RowDefinition x:Name="TrayRow" Height="0" />
+                    <RowDefinition x:Name="ResultRow" Height="*" />
+                </Grid.RowDefinitions>
+                <controls:DiceTray
+                    x:Name="DiceTray"
+                    RollRequested="DiceTray_RollRequested"
+                    Settled="DiceTray_Settled"
+                    Visibility="Collapsed" />
+
                 <ScrollViewer
                     x:Name="SingleResultPanel"
+                    Grid.Row="1"
                     Padding="16"
                     VerticalScrollBarVisibility="Auto">
                     <StackPanel VerticalAlignment="Center" Spacing="6">
@@ -300,6 +363,7 @@
                         <TextBlock
                             x:Name="DetailText"
                             HorizontalAlignment="Center"
+                            TextTrimming="CharacterEllipsis"
                             Foreground="{ThemeResource TextFillColorSecondaryBrush}"
                             IsTextSelectionEnabled="True"
                             Style="{StaticResource CaptionTextBlockStyle}"
@@ -310,6 +374,7 @@
 
                 <ListView
                     x:Name="ResultsList"
+                    Grid.RowSpan="2"
                     Padding="0,4"
                     AutomationProperties.Name="Results"
                     IsItemClickEnabled="True"
@@ -357,18 +422,34 @@
                 <ColumnDefinition Width="Auto" />
                 <ColumnDefinition Width="Auto" />
             </Grid.ColumnDefinitions>
-            <NumberBox
-                x:Name="CountBox"
-                Width="104"
-                AutomationProperties.Name="How many"
-                LargeChange="5"
-                Maximum="50"
-                Minimum="1"
-                SmallChange="1"
-                SpinButtonPlacementMode="Inline"
-                ToolTipService.ToolTip="How many results"
-                ValidationMode="InvalidInputOverwritten"
-                ValueChanged="CountBox_ValueChanged" />
+            <!--  Animated dice show one roll, so the toggle and a count above 1 rule each other out  -->
+            <StackPanel Orientation="Horizontal" Spacing="4">
+                <NumberBox
+                    x:Name="CountBox"
+                    Width="104"
+                    AutomationProperties.Name="How many"
+                    LargeChange="5"
+                    Maximum="50"
+                    Minimum="1"
+                    SmallChange="1"
+                    SpinButtonPlacementMode="Inline"
+                    ToolTipService.ToolTip="How many results"
+                    ValidationMode="InvalidInputOverwritten"
+                    ValueChanged="CountBox_ValueChanged" />
+                <ToggleButton
+                    x:Name="DiceVisualToggle"
+                    Width="40"
+                    Height="32"
+                    Padding="0"
+                    AutomationProperties.AutomationId="DiceVisualToggle"
+                    AutomationProperties.Name="Animated dice"
+                    Checked="DiceVisualToggle_Toggled"
+                    Unchecked="DiceVisualToggle_Toggled"
+                    ToolTipService.ToolTip="Animated dice (rolls one at a time)"
+                    Visibility="Collapsed">
+                    <FontIcon FontSize="16" Glyph="&#xE890;" />
+                </ToggleButton>
+            </StackPanel>
             <TextBlock
                 x:Name="StatusText"
                 Grid.Column="1"

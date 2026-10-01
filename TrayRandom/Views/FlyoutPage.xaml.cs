@@ -1,14 +1,19 @@
 using System.Collections.ObjectModel;
+using System.Numerics;
 using System.Text.RegularExpressions;
+using Microsoft.UI.Composition;
 using Microsoft.UI.Dispatching;
 using Microsoft.UI.Xaml;
 using Microsoft.UI.Xaml.Automation;
 using Microsoft.UI.Xaml.Controls;
+using Microsoft.UI.Xaml.Hosting;
 using Microsoft.UI.Xaml.Input;
 using TrayRandom.Categories;
+using TrayRandom.Dice;
 using TrayRandom.Favorites;
 using TrayRandom.Services;
 using Windows.System;
+using Windows.UI.ViewManagement;
 using DispatcherQueueTimer = Microsoft.UI.Dispatching.DispatcherQueueTimer;
 
 namespace TrayRandom.Views;
@@ -29,6 +34,8 @@ public sealed partial class FlyoutPage : Page, IDisposable
 
     private readonly ObservableCollection<FavoriteChip> _favorites = [];
     private readonly DispatcherQueueTimer _statusTimer;
+    private readonly UISettings _uiSettings = new();
+    private readonly AccessibilitySettings _accessibility = new();
     private RandomContentGenerator _generator;
     private RandomCategory _category;
     private IReadOnlyList<GeneratedItem> _results = [];
@@ -56,6 +63,9 @@ public sealed partial class FlyoutPage : Page, IDisposable
         MaxBox.Value = inputs.RangeMax;
         ListItemsBox.Text = inputs.ListText;
         CountBox.Value = SettingsService.Count;
+        DiceVisualToggle.IsChecked = SettingsService.DiceVisual;
+        PinButton.IsChecked = SettingsService.Pinned;
+        UpdatePinGlyph();
 
         _category = CategoryCatalog.Find(SettingsService.LastCategoryId)!;
         LoadFavorites();
@@ -82,11 +92,16 @@ public sealed partial class FlyoutPage : Page, IDisposable
     }
 
     /// <summary>The flyout hid: keep what the user typed for next time.</summary>
-    public void OnHidden() => SaveInputs();
+    public void OnHidden()
+    {
+        SaveInputs();
+        DiceTray.Stop();
+    }
 
     public void Dispose()
     {
         _statusTimer.Stop();
+        DiceTray.Stop();
 
         // A static event would keep the closed window's whole XAML tree alive.
         SettingsService.Changed -= OnSettingsChanged;
@@ -151,6 +166,7 @@ public sealed partial class FlyoutPage : Page, IDisposable
         DicePanel.Visibility = category.Input == CategoryInput.Dice ? Visibility.Visible : Visibility.Collapsed;
         RangePanel.Visibility = category.Input == CategoryInput.Range ? Visibility.Visible : Visibility.Collapsed;
         ListItemsBox.Visibility = category.Input == CategoryInput.List ? Visibility.Visible : Visibility.Collapsed;
+        DiceVisualToggle.Visibility = DicePanel.Visibility;
 
         UpdateFavoriteButton();
         FavoritesView.SelectedItem = _favorites.FirstOrDefault(f => f.Id == category.Id);
@@ -188,14 +204,14 @@ public sealed partial class FlyoutPage : Page, IDisposable
             return;
         }
 
-        ShowResults();
+        ShowResults(animate: true);
         if (copy)
         {
             CopyResults();
         }
     }
 
-    private void ShowResults()
+    private void ShowResults(bool animate = false)
     {
         bool single = _results.Count <= 1;
         SingleResultPanel.Visibility = single ? Visibility.Visible : Visibility.Collapsed;
@@ -203,6 +219,7 @@ public sealed partial class FlyoutPage : Page, IDisposable
 
         if (!single)
         {
+            ShowDiceTray(null, animate: false);
             ResultsList.ItemsSource = _results.Select((item, i) => new ResultRow(item, i + 1)).ToArray();
             return;
         }
@@ -222,6 +239,96 @@ public sealed partial class FlyoutPage : Page, IDisposable
         ResultText.Style = (Style)Application.Current.Resources[style];
         ResultText.TextAlignment = multiline || value.Length > MediumResultLength ? TextAlignment.Left : TextAlignment.Center;
         ResultText.HorizontalAlignment = ResultText.TextAlignment == TextAlignment.Left ? HorizontalAlignment.Stretch : HorizontalAlignment.Center;
+        ShowDiceTray(result, animate);
+    }
+
+    // Animated dice: the tray takes the card's top and the total sits under it, hidden until
+    // the dice land. Off, in High Contrast, or for anything but one dice roll, the card is all text.
+    private void ShowDiceTray(GeneratedItem? result, bool animate)
+    {
+        IReadOnlyList<TrayDie> dice = SettingsService.DiceVisual && result?.Roll is { } roll && !_accessibility.HighContrast
+            ? DiceTrayLayout.Flatten(roll)
+            : [];
+        bool visual = dice.Count > 0;
+        DiceTray.Visibility = visual ? Visibility.Visible : Visibility.Collapsed;
+        TrayRow.Height = visual ? new GridLength(1, GridUnitType.Star) : new GridLength(0);
+        ResultRow.Height = visual ? GridLength.Auto : new GridLength(1, GridUnitType.Star);
+        SingleResultPanel.Padding = visual ? new Thickness(16, 0, 16, 12) : new Thickness(16);
+
+        // A big roll's working would squeeze the tray; the dice show it anyway.
+        DetailText.MaxLines = visual ? 2 : 0;
+
+        if (!visual)
+        {
+            DiceTray.Clear();
+            RevealResult(animate: false);
+            return;
+        }
+
+        ResultText.Style = (Style)Application.Current.Resources["TitleLargeTextBlockStyle"];
+        DiceTray.Show(
+            dice.Take(DiceTrayLayout.MaxDice).ToArray(),
+            Math.Max(0, dice.Count - DiceTrayLayout.MaxDice),
+            animate && _uiSettings.AnimationsEnabled);
+
+        if (DiceTray.IsRolling)
+        {
+            HideResult();
+        }
+        else
+        {
+            RevealResult(animate: false);
+        }
+    }
+
+    private void HideResult()
+    {
+        foreach (UIElement element in (UIElement[])[ResultText, DetailText])
+        {
+            Visual visual = ElementCompositionPreview.GetElementVisual(element);
+            visual.StopAnimation(nameof(Visual.Opacity));
+            visual.StopAnimation(nameof(Visual.Scale));
+            visual.Opacity = 0;
+        }
+    }
+
+    // The total springs up from small as the dice settle; the working fades in after it.
+    private void RevealResult(bool animate)
+    {
+        Visual total = ElementCompositionPreview.GetElementVisual(ResultText);
+        Visual detail = ElementCompositionPreview.GetElementVisual(DetailText);
+        foreach (Visual visual in (Visual[])[total, detail])
+        {
+            visual.StopAnimation(nameof(Visual.Opacity));
+            visual.StopAnimation(nameof(Visual.Scale));
+            visual.Opacity = 1;
+            visual.Scale = Vector3.One;
+        }
+
+        if (!animate || !_uiSettings.AnimationsEnabled)
+        {
+            return;
+        }
+
+        Compositor compositor = total.Compositor;
+        total.CenterPoint = new Vector3((float)ResultText.ActualWidth / 2, (float)ResultText.ActualHeight / 2, 0);
+        SpringVector3NaturalMotionAnimation spring = compositor.CreateSpringVector3Animation();
+        spring.InitialValue = new Vector3(0.4f, 0.4f, 1);
+        spring.FinalValue = Vector3.One;
+        spring.DampingRatio = 0.5f;
+        spring.Period = TimeSpan.FromMilliseconds(50);
+        total.StartAnimation(nameof(Visual.Scale), spring);
+
+        ScalarKeyFrameAnimation fadeIn = compositor.CreateScalarKeyFrameAnimation();
+        fadeIn.InsertKeyFrame(0, 0);
+        fadeIn.InsertKeyFrame(1, 1);
+        fadeIn.Duration = TimeSpan.FromMilliseconds(160);
+        total.StartAnimation(nameof(Visual.Opacity), fadeIn);
+
+        fadeIn.Duration = TimeSpan.FromMilliseconds(250);
+        fadeIn.DelayTime = TimeSpan.FromMilliseconds(120);
+        fadeIn.DelayBehavior = AnimationDelayBehavior.SetInitialValueBeforeDelay;
+        detail.StartAnimation(nameof(Visual.Opacity), fadeIn);
     }
 
     private void CopyResults()
@@ -411,6 +518,14 @@ public sealed partial class FlyoutPage : Page, IDisposable
         }
 
         SettingsService.Count = (int)args.NewValue;
+
+        // Several results are a list, which the dice tray can't show: asking for more turns it off.
+        if (SettingsService.Count > 1 && SettingsService.DiceVisual)
+        {
+            SettingsService.DiceVisual = false;
+            DiceVisualToggle.IsChecked = false;
+        }
+
         if (!_loading && _results.Count > 0 && _results.Count != SettingsService.Count)
         {
             Generate(copy: false);
@@ -433,7 +548,52 @@ public sealed partial class FlyoutPage : Page, IDisposable
         Generate(copy: SettingsService.AutoCopy);
     }
 
+    // Checked/Unchecked rather than Click: UI Automation's Toggle (Narrator) doesn't raise Click.
+    private void DiceVisualToggle_Toggled(object sender, RoutedEventArgs e)
+    {
+        bool on = DiceVisualToggle.IsChecked == true;
+        if (_loading || on == SettingsService.DiceVisual)
+        {
+            return;
+        }
+
+        SettingsService.DiceVisual = on;
+
+        // The tray rolls one at a time; dropping the count to 1 rerolls into it.
+        if (SettingsService.DiceVisual && CountBox.Value > 1)
+        {
+            CountBox.Value = 1;
+        }
+        else
+        {
+            ShowResults(animate: true);
+        }
+    }
+
+    private void DiceTray_RollRequested(object? sender, EventArgs e) => Generate(copy: SettingsService.AutoCopy);
+
+    private void DiceTray_Settled(object? sender, EventArgs e) => RevealResult(animate: true);
+
     private void CopyButton_Click(object sender, RoutedEventArgs e) => CopyResults();
+
+    // The window reads SettingsService.Pinned when focus leaves, so saving the flag is all it takes.
+    private void PinButton_Toggled(object sender, RoutedEventArgs e)
+    {
+        UpdatePinGlyph();
+        if (!_loading)
+        {
+            SettingsService.Pinned = PinButton.IsChecked == true;
+        }
+    }
+
+    private void UpdatePinGlyph()
+    {
+        bool pinned = PinButton.IsChecked == true;
+        PinGlyph.Glyph = pinned ? "" : "";
+        string tip = pinned ? "Unpin (closes when you click away)" : "Keep open";
+        AutomationProperties.SetName(PinButton, tip);
+        ToolTipService.SetToolTip(PinButton, tip);
+    }
 
     private void SettingsButton_Click(object sender, RoutedEventArgs e) => App.Current.ShowSettings();
 }
