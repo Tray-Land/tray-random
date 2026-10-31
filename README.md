@@ -41,7 +41,7 @@ Your category, inputs (dice, range, list) and count are remembered between sessi
 
 ## Install
 
-Download the latest MSIX for your architecture (x64 or ARM64) from [GitHub Releases](../../releases). Release packages are signed with the publisher's certificate. If Windows says it can't verify the publisher, install the certificate from the release first, or build from source.
+Download [TrayRandom.appinstaller](https://github.com/Tray-Land/tray-random/releases/latest/download/TrayRandom.appinstaller) and open it. Windows installs the right version for your PC (x64 or ARM64) and keeps it updated.
 
 Requires Windows 10 version 1809 or later, or Windows 11, on x64 or ARM64.
 
@@ -76,7 +76,7 @@ The solution has three projects:
 | `TrayRandom.Core` | No Windows dependencies: the category catalog (Bogus), dice notation parser and roller, dice tray layout and throw paths, favorites logic, locales |
 | `TrayRandom.Tests` | MSTest tests for Core |
 
-To make a release, bump the version in `TrayRandom/Package.appxmanifest` and run `build-msix-for-gh.ps1`. It builds signed x64 and ARM64 MSIX packages and drafts a GitHub release.
+To make a release, bump the version in `TrayRandom/Package.appxmanifest` and run `build-msix-for-gh.ps1`. It builds a signed x64 and ARM64 `.msixbundle` plus an auto-updating `TrayRandom.appinstaller` feed and drafts a GitHub release. Publish the draft without changing its tag, then run `.\build-msix-for-gh.ps1 -VerifyPublished` to check the live feed. `-SkipRelease -NoSign` checks the build without signing or publishing.
 
 ## License
 
