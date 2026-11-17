@@ -41,6 +41,8 @@ Your category, inputs (dice, range, list) and count are remembered between sessi
 
 ## Install
 
+[<img src="docs/MSIX.svg" alt="Install TrayRandom (MSIX)" width="212">](https://github.com/Tray-Land/tray-random/releases/latest/download/TrayRandom.appinstaller)
+
 Download [TrayRandom.appinstaller](https://github.com/Tray-Land/tray-random/releases/latest/download/TrayRandom.appinstaller) and open it. Windows installs the right version for your PC (x64 or ARM64) and keeps it updated.
 
 Requires Windows 10 version 1809 or later, or Windows 11, on x64 or ARM64.
