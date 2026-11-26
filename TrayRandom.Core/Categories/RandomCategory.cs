@@ -1,5 +1,6 @@
 using Bogus;
 using TrayRandom.Dice;
+using TrayRandom.Draws;
 
 namespace TrayRandom.Categories;
 
@@ -16,13 +17,15 @@ public enum CategoryInput
 /// <param name="Id">Stable key saved in favorites and settings; never rename one.</param>
 /// <param name="Generate">Makes one result. Categories that must not repeat across a batch (picking
 /// raffle winners) set <see cref="GenerateBatch"/> instead.</param>
+/// <param name="DrawMode">Draws use the saved-list library instead of the content generator.</param>
 public sealed record RandomCategory(
     string Id,
     string Name,
     CategoryGroup Group,
     Func<GenerationContext, GeneratedItem>? Generate,
     CategoryInput Input = CategoryInput.None,
-    Func<GenerationContext, int, IReadOnlyList<GeneratedItem>>? GenerateBatch = null)
+    Func<GenerationContext, int, IReadOnlyList<GeneratedItem>>? GenerateBatch = null,
+    DrawMode? DrawMode = null)
 {
     public string Glyph => Group.Glyph;
 
@@ -38,7 +41,7 @@ public sealed record RandomCategory(
     };
 }
 
-public sealed record CategoryGroup(string Name, string Glyph);
+public sealed record CategoryGroup(string Name, string Glyph, bool UsesResourceNames = false);
 
 /// <summary>A result: <see cref="Value"/> is what gets copied; <see cref="Detail"/> is optional
 /// working shown beneath it (the individual dice of a roll).</summary>

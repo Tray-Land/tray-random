@@ -2,6 +2,7 @@ using System.ComponentModel;
 using Microsoft.UI.Xaml;
 using TrayRandom.Categories;
 using TrayRandom.Text;
+using TrayRandom.ViewModels;
 
 namespace TrayRandom.Views;
 
@@ -12,12 +13,14 @@ public sealed class FavoriteChip(RandomCategory category, int position)
 
     public string Id => Category.Id;
 
-    public string Name => Category.Name;
+    public string Name { get; } = ListDrawPresentation.CategoryName(category);
 
     public string Glyph => Category.Glyph;
 
     // Ctrl+1..9 shortcuts only reach the first nine.
-    public string ToolTip => position <= 9 ? $"{Category.Group.Name} (Ctrl+{position})" : Category.Group.Name;
+    public string ToolTip { get; } = position <= 9
+        ? $"{ListDrawPresentation.GroupName(category.Group)} (Ctrl+{position})"
+        : ListDrawPresentation.GroupName(category.Group);
 }
 
 /// <summary>One line in the results list when generating several at once.</summary>

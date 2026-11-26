@@ -23,6 +23,11 @@ public sealed class RandomContentGenerator
     /// </summary>
     public IReadOnlyList<GeneratedItem> Generate(RandomCategory category, CategoryInputs inputs, int count = 1)
     {
+        if (category.DrawMode is not null)
+        {
+            throw new ArgumentException("List draws require a draw library.", nameof(category));
+        }
+
         count = Math.Max(count, 1);
         GenerationContext context = new(_faker, inputs);
         if (category.GenerateBatch is { } batch)

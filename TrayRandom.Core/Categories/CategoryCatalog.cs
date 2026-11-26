@@ -1,6 +1,7 @@
 using System.Globalization;
 using Bogus;
 using TrayRandom.Dice;
+using TrayRandom.Draws;
 
 namespace TrayRandom.Categories;
 
@@ -12,6 +13,7 @@ public static class CategoryCatalog
 {
     // Segoe Fluent Icons code points.
     public static readonly CategoryGroup Chance = new("Dice & chance", "");
+    public static readonly CategoryGroup ListDraws = new("ListDrawTitle", "\uE8CB", UsesResourceNames: true);
     public static readonly CategoryGroup People = new("People", "");
     public static readonly CategoryGroup Text = new("Text", "");
     public static readonly CategoryGroup Internet = new("Internet", "");
@@ -39,6 +41,14 @@ public static class CategoryCatalog
         new("shuffle", "Shuffle list", Chance, ShuffleList, CategoryInput.List),
         new("yes-no", "Yes or no", Chance, c => c.Random.Bool() ? "Yes" : "No"),
         new("card", "Playing card", Chance, c => c.Random.ArrayElement(Ranks) + c.Random.ArrayElement(Suits)),
+
+        // List draws
+        DrawCategory("draw-winner", DrawMode.Winner),
+        DrawCategory("draw-ranking", DrawMode.Ranking),
+        DrawCategory("draw-weighted-winner", DrawMode.WeightedWinner),
+        DrawCategory("draw-weighted-ranking", DrawMode.WeightedRanking),
+        DrawCategory("draw-groups", DrawMode.Groups),
+        DrawCategory("draw-secret-santa", DrawMode.SecretSanta),
 
         // People
         new("full-name", "Full name", People, c => c.Faker.Name.FullName()),
@@ -136,6 +146,9 @@ public static class CategoryCatalog
     public static RandomCategory? Find(string? id) => id is not null && ById.TryGetValue(id, out RandomCategory? c) ? c : null;
 
     public static bool Exists(string id) => ById.ContainsKey(id);
+
+    private static RandomCategory DrawCategory(string id, DrawMode mode) =>
+        new(id, $"ListDrawMode{mode}", ListDraws, null, DrawMode: mode);
 
     private static GeneratedItem RollDice(GenerationContext c)
     {

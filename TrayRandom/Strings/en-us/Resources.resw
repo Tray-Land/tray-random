@@ -1,0 +1,86 @@
+<?xml version="1.0" encoding="utf-8"?>
+<root>
+  <resheader name="resmimetype"><value>text/microsoft-resx</value></resheader>
+  <resheader name="version"><value>2.0</value></resheader>
+  <resheader name="reader"><value>System.Resources.ResXResourceReader, System.Windows.Forms, Version=4.0.0.0, Culture=neutral, PublicKeyToken=b77a5c561934e089</value></resheader>
+  <resheader name="writer"><value>System.Resources.ResXResourceWriter, System.Windows.Forms, Version=4.0.0.0, Culture=neutral, PublicKeyToken=b77a5c561934e089</value></resheader>
+
+  <data name="ListDrawTitle" xml:space="preserve"><value>List draws</value></data>
+  <data name="ListDrawAction" xml:space="preserve"><value>Draw</value></data>
+  <data name="ListDrawOpenFavorite" xml:space="preserve"><value>Open {0}</value></data>
+  <data name="ListDrawEmptyResult" xml:space="preserve"><value>Choose a saved list or enter your own items, then select Draw.</value></data>
+  <data name="ListDrawLoadingLists" xml:space="preserve"><value>Loading lists...</value></data>
+  <data name="ListDrawLoadingHistory.Text" xml:space="preserve"><value>Loading draw history...</value></data>
+  <data name="ListDrawHistoryTitle" xml:space="preserve"><value>Draw history</value></data>
+  <data name="ListDrawResultTitle" xml:space="preserve"><value>Draw result</value></data>
+  <data name="ListDrawModeWinner" xml:space="preserve"><value>Pick a winner</value></data>
+  <data name="ListDrawModeRanking" xml:space="preserve"><value>Shuffle and rank</value></data>
+  <data name="ListDrawModeWeightedWinner" xml:space="preserve"><value>Pick a weighted winner</value></data>
+  <data name="ListDrawModeWeightedRanking" xml:space="preserve"><value>Weighted ranking</value></data>
+  <data name="ListDrawModeGroups" xml:space="preserve"><value>Split into groups</value></data>
+  <data name="ListDrawModeSecretSanta" xml:space="preserve"><value>Secret Santa</value></data>
+
+  <data name="ListDrawBack.[using:Microsoft.UI.Xaml.Automation]AutomationProperties.Name" xml:space="preserve"><value>Back</value></data>
+  <data name="ListDrawBack.[using:Microsoft.UI.Xaml.Controls]ToolTipService.ToolTip" xml:space="preserve"><value>Back (Esc)</value></data>
+  <data name="ListDrawHistoryButton.[using:Microsoft.UI.Xaml.Automation]AutomationProperties.Name" xml:space="preserve"><value>Draw history</value></data>
+  <data name="ListDrawHistoryButton.[using:Microsoft.UI.Xaml.Controls]ToolTipService.ToolTip" xml:space="preserve"><value>Draw history</value></data>
+  <data name="ListDrawRetry.Content" xml:space="preserve"><value>Try again</value></data>
+  <data name="ListDrawRetry.[using:Microsoft.UI.Xaml.Automation]AutomationProperties.Name" xml:space="preserve"><value>Try loading list draws again</value></data>
+  <data name="ListDrawOptions.[using:Microsoft.UI.Xaml.Automation]AutomationProperties.Name" xml:space="preserve"><value>List options</value></data>
+  <data name="ListDrawOptions.[using:Microsoft.UI.Xaml.Controls]ToolTipService.ToolTip" xml:space="preserve"><value>List options</value></data>
+  <data name="ListDrawGroupCount.Header" xml:space="preserve"><value>Number of groups</value></data>
+  <data name="ListDrawGroupCount.[using:Microsoft.UI.Xaml.Automation]AutomationProperties.Name" xml:space="preserve"><value>Number of groups</value></data>
+  <data name="ListDrawSavedLists.Header" xml:space="preserve"><value>Saved lists</value></data>
+  <data name="ListDrawSavedLists.PlaceholderText" xml:space="preserve"><value>No list selected</value></data>
+  <data name="ListDrawSavedLists.[using:Microsoft.UI.Xaml.Automation]AutomationProperties.Name" xml:space="preserve"><value>Saved lists</value></data>
+  <data name="ListDrawNewList.Text" xml:space="preserve"><value>New list</value></data>
+  <data name="ListDrawNewList.[using:Microsoft.UI.Xaml.Automation]AutomationProperties.Name" xml:space="preserve"><value>New list</value></data>
+  <data name="ListDrawNameLabel" xml:space="preserve"><value>List name</value></data>
+  <data name="ListDrawEntries.Header" xml:space="preserve"><value>Entries (one per line)</value></data>
+  <data name="ListDrawEntries.[using:Microsoft.UI.Xaml.Automation]AutomationProperties.Name" xml:space="preserve"><value>Entries, one per line</value></data>
+  <data name="ListDrawEntriesHelp.Text" xml:space="preserve"><value>Add | 3 after an entry to weight it. Omit the weight for 1, or use 0 to skip it.</value></data>
+  <data name="ListDrawRestoreEntries.Content" xml:space="preserve"><value>Restore saved entries</value></data>
+  <data name="ListDrawRestoreEntries.[using:Microsoft.UI.Xaml.Automation]AutomationProperties.Name" xml:space="preserve"><value>Restore saved entries</value></data>
+  <data name="ListDrawRestoreTitle" xml:space="preserve"><value>Restore saved entries?</value></data>
+  <data name="ListDrawRestorePrompt" xml:space="preserve"><value>Replace your unsaved edits with the entries saved in "{0}"?</value></data>
+  <data name="ListDrawRestoreAction" xml:space="preserve"><value>Restore entries</value></data>
+  <data name="ListDrawSave.Text" xml:space="preserve"><value>Save list...</value></data>
+  <data name="ListDrawSave.[using:Microsoft.UI.Xaml.Automation]AutomationProperties.Name" xml:space="preserve"><value>Save list</value></data>
+  <data name="ListDrawSaveTitle" xml:space="preserve"><value>Save list</value></data>
+  <data name="ListDrawDeleteList.Text" xml:space="preserve"><value>Delete list...</value></data>
+  <data name="ListDrawDeleteList.[using:Microsoft.UI.Xaml.Automation]AutomationProperties.Name" xml:space="preserve"><value>Delete list</value></data>
+  <data name="ListDrawDeleteListTitle" xml:space="preserve"><value>Delete list?</value></data>
+  <data name="ListDrawDeleteListPrompt" xml:space="preserve"><value>Delete "{0}"? Its previous draws will stay in history.</value></data>
+  <data name="ListDrawDelete" xml:space="preserve"><value>Delete</value></data>
+  <data name="ListDrawCancel" xml:space="preserve"><value>Cancel</value></data>
+  <data name="ListDrawHistoryList.[using:Microsoft.UI.Xaml.Automation]AutomationProperties.Name" xml:space="preserve"><value>Previous draws</value></data>
+  <data name="ListDrawEmptyHistory.Text" xml:space="preserve"><value>No draws yet. Run a draw to see it here.</value></data>
+  <data name="ListDrawCopy.[using:Microsoft.UI.Xaml.Automation]AutomationProperties.Name" xml:space="preserve"><value>Copy draw result</value></data>
+  <data name="ListDrawCopy.[using:Microsoft.UI.Xaml.Controls]ToolTipService.ToolTip" xml:space="preserve"><value>Copy (Ctrl+Shift+C)</value></data>
+  <data name="ListDrawDeleteRun.Content" xml:space="preserve"><value>Delete</value></data>
+  <data name="ListDrawDeleteRun.[using:Microsoft.UI.Xaml.Automation]AutomationProperties.Name" xml:space="preserve"><value>Delete draw from history</value></data>
+  <data name="ListDrawConfirmDeleteRun.Text" xml:space="preserve"><value>Delete this draw</value></data>
+  <data name="ListDrawConfirmDeleteRun.[using:Microsoft.UI.Xaml.Automation]AutomationProperties.Name" xml:space="preserve"><value>Delete this draw</value></data>
+
+  <data name="ListDrawUntitled" xml:space="preserve"><value>Untitled list</value></data>
+  <data name="ListDrawRunDetails" xml:space="preserve"><value>{0} · {1}</value></data>
+  <data name="ListDrawRank" xml:space="preserve"><value>{0}. {1}</value></data>
+  <data name="ListDrawGroup" xml:space="preserve"><value>Group {0}</value></data>
+  <data name="ListDrawPair" xml:space="preserve"><value>{0} gives to {1}</value></data>
+  <data name="ListDrawSaved" xml:space="preserve"><value>List saved.</value></data>
+  <data name="ListDrawListDeleted" xml:space="preserve"><value>List deleted. Past draws are still in history.</value></data>
+  <data name="ListDrawRunDeleted" xml:space="preserve"><value>Draw removed from history.</value></data>
+  <data name="ListDrawCopied" xml:space="preserve"><value>Result copied.</value></data>
+  <data name="ListDrawCopyFailed" xml:space="preserve"><value>Couldn't copy the result. Try again.</value></data>
+  <data name="ListDrawLoadFailed" xml:space="preserve"><value>Couldn't load saved lists and draw history. No data was changed.</value></data>
+  <data name="ListDrawSaveFailed" xml:space="preserve"><value>Couldn't save changes to lists or history. Try again.</value></data>
+  <data name="ListDrawErrorEmptyList" xml:space="preserve"><value>Enter at least one item.</value></data>
+  <data name="ListDrawErrorEmptySavedList" xml:space="preserve"><value>Enter at least one item or select Restore saved entries.</value></data>
+  <data name="ListDrawErrorMissingListName" xml:space="preserve"><value>Give the list a name before saving it.</value></data>
+  <data name="ListDrawErrorDuplicateListName" xml:space="preserve"><value>That list name is already in use. Choose a different name.</value></data>
+  <data name="ListDrawErrorInvalidWeight" xml:space="preserve"><value>On line {0}, use an item followed by | and a nonnegative whole number.</value></data>
+  <data name="ListDrawErrorNoPositiveWeights" xml:space="preserve"><value>Give at least one item a weight greater than 0.</value></data>
+  <data name="ListDrawErrorInvalidGroupCount" xml:space="preserve"><value>Enter a whole number from 2 to the number of entries.</value></data>
+  <data name="ListDrawErrorNotEnoughForSecretSanta" xml:space="preserve"><value>Secret Santa needs at least two people.</value></data>
+  <data name="ListDrawErrorDuplicateSecretSantaEntry" xml:space="preserve"><value>Use a different name for each Secret Santa participant.</value></data>
+</root>

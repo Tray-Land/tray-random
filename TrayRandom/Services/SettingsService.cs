@@ -84,6 +84,12 @@ internal static class SettingsService
         set => Set(nameof(LastCategoryId), value);
     }
 
+    public static Guid? LastDrawListId
+    {
+        get => Guid.TryParse(Get<string?>(nameof(LastDrawListId), null), out Guid id) ? id : null;
+        set => Set(nameof(LastDrawListId), value?.ToString());
+    }
+
     /// <summary>How many results to make at once.</summary>
     public static int Count
     {

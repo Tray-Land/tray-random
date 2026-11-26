@@ -166,8 +166,25 @@ public partial class App : Application
             menu.Items.Add(new MenuFlyoutSeparator());
             foreach (RandomCategory category in favorites.Take(MaxQuickCopyItems).Select(id => CategoryCatalog.Find(id)!))
             {
-                MenuFlyoutItem item = new() { Text = $"Copy {category.Name.ToLower(CultureInfo.CurrentCulture)}", Icon = new FontIcon { Glyph = category.Glyph } };
-                item.Click += (_, _) => QuickCopy(category);
+                bool isDraw = category.DrawMode is not null;
+                MenuFlyoutItem item = new()
+                {
+                    Text = isDraw
+                        ? ViewModels.ListDrawPresentation.Format("ListDrawOpenFavorite", ViewModels.ListDrawPresentation.CategoryName(category))
+                        : $"Copy {category.Name.ToLower(CultureInfo.CurrentCulture)}",
+                    Icon = new FontIcon { Glyph = category.Glyph },
+                };
+                item.Click += (_, _) =>
+                {
+                    if (isDraw)
+                    {
+                        EnsureFlyout().ShowCategory(category);
+                    }
+                    else
+                    {
+                        QuickCopy(category);
+                    }
+                };
                 menu.Items.Add(item);
             }
 

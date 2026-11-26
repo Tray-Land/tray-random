@@ -10,9 +10,11 @@ using Microsoft.UI.Xaml.Hosting;
 using Microsoft.UI.Xaml.Input;
 using TrayRandom.Categories;
 using TrayRandom.Dice;
+using TrayRandom.Draws;
 using TrayRandom.Favorites;
 using TrayRandom.Services;
 using TrayRandom.Text;
+using TrayRandom.ViewModels;
 using Windows.System;
 using Windows.UI.ViewManagement;
 using DispatcherQueueTimer = Microsoft.UI.Dispatching.DispatcherQueueTimer;
@@ -51,9 +53,12 @@ public sealed partial class FlyoutPage : Page, IDisposable
     private IReadOnlyList<GeneratedItem> _results = [];
     private bool _loading = true;
     private bool _resultsStale;
+    private bool _isShown;
 
-    public FlyoutPage()
+    internal FlyoutPage(Lazy<DrawLibrary> drawLibrary, Func<Task> showDrawHistoryAsync)
     {
+        _drawLibrary = drawLibrary;
+        _showDrawHistoryAsync = showDrawHistoryAsync;
         InitializeComponent();
         TitleText.Text = App.DisplayName;
 
@@ -93,11 +98,21 @@ public sealed partial class FlyoutPage : Page, IDisposable
     /// <summary>The flyout opened: make something to show if there's nothing yet.</summary>
     public void OnShown()
     {
+        _isShown = true;
         // Settings may have reset the favorites while this page was swapped out.
         LoadFavorites();
         UpdateFavoriteButton();
 
-        if (_results.Count == 0 || _resultsStale)
+        if (_category.DrawMode is not null)
+        {
+            if (_results.Count == 0)
+            {
+                ShowResults();
+            }
+
+            _ = LoadDrawListsAsync();
+        }
+        else if (_results.Count == 0 || _resultsStale)
         {
             _resultsStale = false;
             Generate(copy: false);
@@ -109,7 +124,11 @@ public sealed partial class FlyoutPage : Page, IDisposable
     /// <summary>The flyout hid: keep what the user typed for next time.</summary>
     public void OnHidden()
     {
+        _isShown = false;
+        _drawDialog?.Hide();
         SaveInputs();
+        _statusTimer.Stop();
+        StatusText.Text = string.Empty;
         StopScramble();
         DiceTray.Stop();
     }
@@ -137,12 +156,27 @@ public sealed partial class FlyoutPage : Page, IDisposable
     {
         foreach (CategoryGroup group in CategoryCatalog.Groups)
         {
-            MenuFlyoutSubItem sub = new() { Text = group.Name, Icon = new FontIcon { Glyph = group.Glyph } };
+            MenuFlyoutSubItem sub = new()
+            {
+                Text = ListDrawPresentation.GroupName(group),
+                Icon = new FontIcon { Glyph = group.Glyph },
+            };
+            AutomationProperties.SetName(sub, sub.Text);
             foreach (RandomCategory category in CategoryCatalog.All.Where(c => c.Group == group))
             {
-                MenuFlyoutItem item = new() { Text = category.Name };
+                MenuFlyoutItem item = new() { Text = ListDrawPresentation.CategoryName(category) };
+                AutomationProperties.SetName(item, item.Text);
                 item.Click += (_, _) => SelectCategory(category, generate: true);
                 sub.Items.Add(item);
+            }
+
+            if (group == CategoryCatalog.ListDraws)
+            {
+                sub.Items.Add(new MenuFlyoutSeparator());
+                MenuFlyoutItem history = new() { Text = ListDrawPresentation.Get("ListDrawHistoryTitle") };
+                AutomationProperties.SetName(history, history.Text);
+                history.Click += DrawHistory_Click;
+                sub.Items.Add(history);
             }
 
             CategoryMenu.Items.Add(sub);
@@ -167,7 +201,7 @@ public sealed partial class FlyoutPage : Page, IDisposable
         }
     }
 
-    private void SelectCategory(RandomCategory category, bool generate)
+    internal void SelectCategory(RandomCategory category, bool generate)
     {
         bool changed = category != _category;
         SaveInputs();
@@ -175,15 +209,16 @@ public sealed partial class FlyoutPage : Page, IDisposable
         SettingsService.LastCategoryId = category.Id;
 
         CategoryGlyph.Glyph = category.Glyph;
-        CategoryNameText.Text = category.Name;
-        CategoryGroupText.Text = category.Group.Name;
-        AutomationProperties.SetName(CategoryButton, $"Category: {category.Name}");
-        GenerateButton.Content = category.ActionVerb;
+        CategoryNameText.Text = ListDrawPresentation.CategoryName(category);
+        CategoryGroupText.Text = ListDrawPresentation.GroupName(category.Group);
+        AutomationProperties.SetName(CategoryButton, $"Category: {CategoryNameText.Text}");
+        GenerateButton.Content = category.DrawMode is null ? category.ActionVerb : ListDrawPresentation.Get("ListDrawAction");
 
         DicePanel.Visibility = category.Input == CategoryInput.Dice ? Visibility.Visible : Visibility.Collapsed;
         RangePanel.Visibility = category.Input == CategoryInput.Range ? Visibility.Visible : Visibility.Collapsed;
         ListItemsBox.Visibility = category.Input == CategoryInput.List ? Visibility.Visible : Visibility.Collapsed;
         DiceVisualToggle.Visibility = DicePanel.Visibility;
+        UpdateDrawControls();
 
         UpdateFavoriteButton();
         FavoritesView.SelectedItem = _favorites.FirstOrDefault(f => f.Id == category.Id);
@@ -195,11 +230,19 @@ public sealed partial class FlyoutPage : Page, IDisposable
         if (changed)
         {
             StatusBar.IsOpen = false;
+            _drawResult = null;
             _results = [];
             ShowResults();
         }
 
-        if (generate)
+        if (category.DrawMode is not null)
+        {
+            if (_isShown)
+            {
+                _ = LoadDrawListsAsync();
+            }
+        }
+        else if (generate)
         {
             Generate(copy: SettingsService.AutoCopy);
         }
@@ -215,6 +258,7 @@ public sealed partial class FlyoutPage : Page, IDisposable
         }
         catch (Exception ex) when (ex is ArgumentException or FormatException)
         {
+            StatusBar.Severity = InfoBarSeverity.Warning;
             StatusBar.Title = "Can't generate that";
             StatusBar.Message = ex.Message;
             StatusBar.IsOpen = true;
@@ -230,6 +274,7 @@ public sealed partial class FlyoutPage : Page, IDisposable
 
     private void ShowResults(bool animate = false)
     {
+        StopScramble();
         bool single = _results.Count <= 1;
         SingleResultPanel.Visibility = single ? Visibility.Visible : Visibility.Collapsed;
         ResultsList.Visibility = single ? Visibility.Collapsed : Visibility.Visible;
@@ -245,18 +290,21 @@ public sealed partial class FlyoutPage : Page, IDisposable
 
         ResultsList.ItemsSource = null;
         GeneratedItem? result = _results.Count == 1 ? _results[0] : null;
-        string value = result?.Value ?? string.Empty;
+        bool emptyDraw = result is null && _category.DrawMode is not null;
+        string value = result?.Value ?? (emptyDraw ? ListDrawPresentation.Get("ListDrawEmptyResult") : string.Empty);
         ResultText.Text = value;
+        ResultText.IsTextSelectionEnabled = result is not null;
         DetailText.Text = result?.Detail ?? string.Empty;
         DetailText.Visibility = string.IsNullOrEmpty(DetailText.Text) ? Visibility.Collapsed : Visibility.Visible;
 
         // Big for a dice total, smaller for a name, body text for paragraphs and profiles.
         bool multiline = value.Contains('\n');
-        string style = multiline || value.Length > MediumResultLength ? "BodyLargeTextBlockStyle"
+        string style = emptyDraw ? "BodyTextBlockStyle"
+            : multiline || value.Length > MediumResultLength ? "BodyLargeTextBlockStyle"
             : value.Length > LargeResultLength ? "SubtitleTextBlockStyle"
             : "DisplayTextBlockStyle";
         ResultText.Style = (Style)Application.Current.Resources[style];
-        ResultText.TextAlignment = multiline || value.Length > MediumResultLength ? TextAlignment.Left : TextAlignment.Center;
+        ResultText.TextAlignment = !emptyDraw && (multiline || value.Length > MediumResultLength) ? TextAlignment.Left : TextAlignment.Center;
         ResultText.HorizontalAlignment = ResultText.TextAlignment == TextAlignment.Left ? HorizontalAlignment.Stretch : HorizontalAlignment.Center;
         ShowDiceTray(result, animate);
         if (animate && DiceTray.Visibility != Visibility.Visible)
@@ -417,6 +465,13 @@ public sealed partial class FlyoutPage : Page, IDisposable
             return;
         }
 
+        if (_drawResult is { } run)
+        {
+            string key = ClipboardService.TryCopy(ListDrawPresentation.ResultText(run)) ? "ListDrawCopied" : "ListDrawCopyFailed";
+            ShowStatus(ListDrawPresentation.Get(key));
+            return;
+        }
+
         CopyText(string.Join(Environment.NewLine, _results.Select(r => r.Value)), _results.Count == 1 ? "Copied" : $"Copied {_results.Count}");
     }
 
@@ -427,6 +482,11 @@ public sealed partial class FlyoutPage : Page, IDisposable
 
     private void ShowStatus(string text)
     {
+        if (!_isShown)
+        {
+            return;
+        }
+
         StatusText.Text = text;
         _statusTimer.Stop();
         _statusTimer.Start();
@@ -605,7 +665,7 @@ public sealed partial class FlyoutPage : Page, IDisposable
             DiceVisualToggle.IsChecked = false;
         }
 
-        if (!_loading && _results.Count > 0 && _results.Count != SettingsService.Count)
+        if (!_loading && _category.DrawMode is null && _results.Count > 0 && _results.Count != SettingsService.Count)
         {
             Generate(copy: false);
         }
@@ -619,12 +679,12 @@ public sealed partial class FlyoutPage : Page, IDisposable
         }
     }
 
-    private void GenerateButton_Click(object sender, RoutedEventArgs e) => Generate(copy: SettingsService.AutoCopy);
+    private async void GenerateButton_Click(object sender, RoutedEventArgs e) => await GenerateRequestedAsync();
 
-    private void GenerateAccelerator_Invoked(KeyboardAccelerator sender, KeyboardAcceleratorInvokedEventArgs args)
+    private async void GenerateAccelerator_Invoked(KeyboardAccelerator sender, KeyboardAcceleratorInvokedEventArgs args)
     {
         args.Handled = true;
-        Generate(copy: SettingsService.AutoCopy);
+        await GenerateRequestedAsync();
     }
 
     // Checked/Unchecked rather than Click: UI Automation's Toggle (Narrator) doesn't raise Click.

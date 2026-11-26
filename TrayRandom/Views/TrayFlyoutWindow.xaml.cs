@@ -3,9 +3,12 @@ using Microsoft.UI.Dispatching;
 using Microsoft.UI.Windowing;
 using Microsoft.UI.Xaml;
 using Microsoft.UI.Xaml.Input;
+using TrayRandom.Categories;
 using TrayRandom.Controls;
+using TrayRandom.Draws;
 using TrayRandom.Services;
 using Windows.Graphics;
+using Windows.Storage;
 using Windows.UI.ViewManagement;
 using Windows.Win32;
 using Windows.Win32.Foundation;
@@ -46,7 +49,9 @@ public sealed partial class TrayFlyoutWindow : WindowEx
     private static readonly TimeSpan CloseDelay = TimeSpan.FromMinutes(1);
 
     private readonly HWND _hwnd;
-    private readonly FlyoutPage _page = new();
+    private readonly FlyoutPage _page;
+    private readonly Lazy<DrawLibrary> _drawLibrary = new(() =>
+        new DrawLibrary(Path.Combine(ApplicationData.Current.LocalFolder.Path, "list-draws.json")));
     private readonly ShellBackdrop _backdrop = new();
     private readonly UISettings _uiSettings = new();
     private readonly DispatcherQueueTimer _hideTimer;
@@ -55,6 +60,7 @@ public sealed partial class TrayFlyoutWindow : WindowEx
     private readonly Stopwatch _animationClock = new();
 
     private SettingsPage? _settingsPage;
+    private DrawHistoryPage? _drawHistoryPage;
     private bool _isShowing;
     private bool _isPopupVisible;
     private bool _allowClose;
@@ -79,6 +85,7 @@ public sealed partial class TrayFlyoutWindow : WindowEx
     {
         InitializeComponent();
         _hwnd = (HWND)WindowNative.GetWindowHandle(this);
+        _page = new FlyoutPage(_drawLibrary, ShowDrawHistoryAsync);
         PageHost.Content = _page;
 
         SystemBackdrop = _backdrop;
@@ -138,6 +145,24 @@ public sealed partial class TrayFlyoutWindow : WindowEx
         PageHost.Content = _settingsPage;
     }
 
+    internal void ShowCategory(RandomCategory category)
+    {
+        _page.SelectCategory(category, generate: false);
+        ShowMainPage();
+        if (!IsPopupVisible)
+        {
+            ShowPopup();
+        }
+    }
+
+    private async Task ShowDrawHistoryAsync()
+    {
+        _drawHistoryPage ??= new DrawHistoryPage(_drawLibrary, ShowMainPage);
+        _page.OnHidden();
+        PageHost.Content = _drawHistoryPage;
+        await _drawHistoryPage.OpenAsync();
+    }
+
     public void ShowMainPage()
     {
         if (ReferenceEquals(PageHost.Content, _page))
@@ -173,7 +198,7 @@ public sealed partial class TrayFlyoutWindow : WindowEx
         Activate();
         PInvoke.SetForegroundWindow(_hwnd);
 
-        if (!IsShowingSettings)
+        if (ReferenceEquals(PageHost.Content, _page))
         {
             _page.OnShown();
         }
@@ -216,6 +241,7 @@ public sealed partial class TrayFlyoutWindow : WindowEx
         _page.OnHidden();
         _page.Dispose();
         _settingsPage = null;
+        _drawHistoryPage = null;
         PageHost.Content = null;
 
         _uiSettings.ColorValuesChanged -= OnColorValuesChanged;
@@ -230,7 +256,14 @@ public sealed partial class TrayFlyoutWindow : WindowEx
     {
         if (!_isPopupVisible)
         {
-            CloseWindow();
+            if (_page.IsDrawBusy || _drawHistoryPage?.IsBusy == true)
+            {
+                _closeTimer.Start();
+            }
+            else
+            {
+                CloseWindow();
+            }
         }
     }
 
@@ -395,15 +428,11 @@ public sealed partial class TrayFlyoutWindow : WindowEx
         return className.SequenceEqual("Xaml_WindowedPopupClass") || className.SequenceEqual("#32768");
     }
 
-    // Escape backs out of settings first, then hides.
+    // Escape backs out of a drill-in first, then hides.
     private void Escape_Invoked(KeyboardAccelerator sender, KeyboardAcceleratorInvokedEventArgs args)
     {
         args.Handled = true;
-        if (IsShowingSettings)
-        {
-            ShowMainPage();
-        }
-        else if (!SettingsService.Pinned)
+        if (!NavigateBack() && !SettingsService.Pinned)
         {
             HidePopup();
         }
@@ -411,16 +440,31 @@ public sealed partial class TrayFlyoutWindow : WindowEx
 
     private void Back_Invoked(KeyboardAccelerator sender, KeyboardAcceleratorInvokedEventArgs args)
     {
-        args.Handled = IsShowingSettings;
-        ShowMainPage();
+        args.Handled = NavigateBack();
     }
 
     private void PopupRoot_PointerPressed(object sender, PointerRoutedEventArgs e)
     {
-        if (IsShowingSettings && e.GetCurrentPoint(PopupRoot).Properties.IsXButton1Pressed)
+        if (e.GetCurrentPoint(PopupRoot).Properties.IsXButton1Pressed)
         {
-            e.Handled = true;
-            ShowMainPage();
+            e.Handled = NavigateBack();
         }
+    }
+
+    private bool NavigateBack()
+    {
+        if (PageHost.Content is DrawHistoryPage history)
+        {
+            history.GoBack();
+            return true;
+        }
+
+        if (IsShowingSettings)
+        {
+            ShowMainPage();
+            return true;
+        }
+
+        return ReferenceEquals(PageHost.Content, _page) && _page.TryDismissDrawDialog();
     }
 }

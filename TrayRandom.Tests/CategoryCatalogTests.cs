@@ -1,6 +1,8 @@
 using System.Globalization;
 using System.Text.RegularExpressions;
 using TrayRandom.Categories;
+using TrayRandom.Draws;
+using TrayRandom.Favorites;
 
 namespace TrayRandom.Tests;
 
@@ -24,7 +26,7 @@ public sealed class CategoryCatalogTests
         foreach (RandomCategory c in CategoryCatalog.All)
         {
             StringAssert.Matches(c.Id, new Regex("^[a-z0-9]+(-[a-z0-9]+)*$"));
-            Assert.IsTrue(c.Generate is not null || c.GenerateBatch is not null, c.Id);
+            Assert.AreNotEqual(c.DrawMode.HasValue, c.Generate is not null || c.GenerateBatch is not null, c.Id);
         }
     }
 
@@ -41,16 +43,45 @@ public sealed class CategoryCatalogTests
     // Bogus fills locale gaps from English, but a broken dataset or API misuse would throw here.
     [TestMethod]
     [DynamicData(nameof(LocaleCodes))]
-    public void EveryCategory_GeneratesInEveryLocale(string locale)
+    public void EveryGeneratorCategory_GeneratesInEveryLocale(string locale)
     {
         RandomContentGenerator generator = new(locale);
         Assert.AreEqual(locale, generator.Locale);
-        foreach (RandomCategory category in CategoryCatalog.All)
+        foreach (RandomCategory category in CategoryCatalog.All.Where(category => category.DrawMode is null))
         {
             IReadOnlyList<GeneratedItem> items = generator.Generate(category, Inputs, 3);
             Assert.AreEqual(3, items.Count, category.Id);
             Assert.IsTrue(items.All(i => !string.IsNullOrWhiteSpace(i.Value)), $"{locale}/{category.Id} produced an empty value");
         }
+    }
+
+    [TestMethod]
+    [DataRow("draw-winner", DrawMode.Winner)]
+    [DataRow("draw-ranking", DrawMode.Ranking)]
+    [DataRow("draw-weighted-winner", DrawMode.WeightedWinner)]
+    [DataRow("draw-weighted-ranking", DrawMode.WeightedRanking)]
+    [DataRow("draw-groups", DrawMode.Groups)]
+    [DataRow("draw-secret-santa", DrawMode.SecretSanta)]
+    public void DrawCategory_FavoritingAndReloading_RestoresTheSelectedMode(string id, DrawMode mode)
+    {
+        IReadOnlyList<string> favorites = FavoritesList.Toggle(["dice"], id);
+
+        IReadOnlyList<string> restored = FavoritesList.Sanitize(favorites, CategoryCatalog.Exists);
+        string? next = FavoritesList.Cycle(restored, "dice", 1);
+        RandomCategory? category = CategoryCatalog.Find(next);
+
+        Assert.IsNotNull(category);
+        Assert.AreEqual(CategoryCatalog.ListDraws, category.Group);
+        Assert.AreEqual(mode, category.DrawMode);
+    }
+
+    [TestMethod]
+    public void Generate_DrawCategory_RequiresTheDrawLibrary()
+    {
+        RandomContentGenerator generator = new();
+        RandomCategory category = CategoryCatalog.Find("draw-winner")!;
+
+        Assert.ThrowsExactly<ArgumentException>(() => generator.Generate(category, Inputs));
     }
 
     [TestMethod]
