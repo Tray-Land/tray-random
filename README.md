@@ -62,7 +62,7 @@ None. There are no accounts and no API keys.
 
 ## Build from source
 
-Prerequisites: the .NET 10 SDK and the winapp CLI (`winget install Microsoft.WinAppCli`).
+Prerequisites: the .NET 11 SDK and the winapp CLI (`winget install Microsoft.WinAppCli`).
 
 ```powershell
 cd TrayRandom
